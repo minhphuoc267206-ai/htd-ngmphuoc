@@ -1,0 +1,113 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HTĐ┊NgMphước</title>
+<style>
+body{margin:0;background:#10141f;color:#fff;font-family:Arial,sans-serif;padding:18px}
+main{max-width:500px;margin:auto}
+h1{color:#70e1ff;font-size:25px}
+.card{background:#1d2636;border:1px solid #35445b;border-radius:14px;padding:16px;margin:14px 0}
+label{display:block;margin:12px 0 6px}
+input,select,button{box-sizing:border-box;width:100%;padding:13px;border-radius:9px;border:1px solid #52627a;font-size:16px}
+input,select{background:#101827;color:white}
+button{margin-top:16px;background:#00c990;color:#06150f;font-weight:bold;border:0}
+.result{line-height:1.9;white-space:pre-line}
+small{color:#b8c5d8}
+</style>
+</head>
+<body>
+<main>
+<h1>HTĐ┊NgMphước</h1>
+<p>Free Fire · Công cụ hỗ trợ độ nhạy</p>
+
+<div class="card">
+<label for="device">Tên điện thoại</label>
+<input id="device" placeholder="Ví dụ: Vivo V60">
+
+<label for="style">Phong cách chơi</label>
+<select id="style">
+<option value="balanced">Cân bằng</option>
+<option value="headshot">Ưu tiên kéo tâm</option>
+<option value="rush">Đánh cận chiến</option>
+<option value="steady">Ổn định tầm xa</option>
+</select>
+
+<button id="analyze">PHÂN TÍCH THIẾT BỊ</button>
+</div>
+
+<div class="card">
+<h3>Kết quả phân tích</h3>
+<div id="result" class="result">Nhập tên điện thoại rồi nhấn phân tích.</div>
+<small id="status">Chưa thực hiện phân tích.</small>
+</div>
+</main>
+
+<script>
+const device = document.getElementById("device");
+const style = document.getElementById("style");
+const result = document.getElementById("result");
+const status = document.getElementById("status");
+let requestId = 0;
+
+function clearResult() {
+  requestId++;
+  result.textContent = "Nhập tên điện thoại rồi nhấn phân tích.";
+  status.textContent = "Đã xóa kết quả cũ.";
+}
+
+device.addEventListener("input", clearResult);
+style.addEventListener("change", clearResult);
+
+document.getElementById("analyze").addEventListener("click", async () => {
+  const id = ++requestId;
+  const model = device.value.trim();
+  const selectedStyle = style.value;
+
+  result.textContent = "";
+  if (!model) {
+    status.textContent = "Bạn cần nhập tên điện thoại.";
+    return;
+  }
+
+  status.textContent = "Đang kiểm tra server…";
+
+  try {
+    const healthResponse = await fetch("/api/health", {cache:"no-store"});
+    if (!healthResponse.ok) throw new Error("Server không phản hồi");
+    const health = await healthResponse.json();
+
+    const response = await fetch(
+      "/api/sensitivity?device=" + encodeURIComponent(model) +
+      "&style=" + encodeURIComponent(selectedStyle),
+      {cache:"no-store"}
+    );
+    const data = await response.json();
+
+    if (id !== requestId) return;
+
+    if (!response.ok) throw new Error(data.error || "Lỗi API");
+
+    result.textContent =
+      "Thiết bị: " + data.device + "\n" +
+      "Tổng quan: " + data.settings.general + "\n" +
+      "Red Dot: " + data.settings.redDot + "\n" +
+      "Ống ngắm 2x: " + data.settings.scope2x + "\n" +
+      "Ống ngắm 4x: " + data.settings.scope4x + "\n" +
+      "AWM: " + data.settings.sniper + "\n" +
+      "Nhìn xung quanh: " + data.settings.freeLook;
+
+    status.textContent = data.message +
+      " | Trạng thái: " + data.status;
+  } catch (error) {
+    if (id !== requestId) return;
+    result.textContent = "Chưa lấy được kết quả từ server.";
+    status.textContent =
+      "Bạn cần triển khai backend API trước. " + error.message;
+  }
+});
+</script>
+</body>
+</html>
